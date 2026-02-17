@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from db_connection import get_db_connection
+from db_connection import get_db_connection, get_dict_cursor
 from init_db import init_database
-import mysql.connector
 import hashlib
 import os
 from functools import wraps
@@ -9,16 +8,14 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'fallback-secret-key-change-in-production')
 
-
 # ──────────────────────────────────────────
-#  Initialize database tables on startup
+# Initialize database tables on startup
 # ──────────────────────────────────────────
 with app.app_context():
     init_database()
 
-
 # ──────────────────────────────────────────
-#  Utility Functions
+# Utility Functions
 # ──────────────────────────────────────────
 
 def hash_password(password):
@@ -50,7 +47,7 @@ def admin_required(f):
 
 def get_account_balance(connection, account_number):
     """Fetch current balance for an account."""
-    cursor = connection.cursor(dictionary=True)
+    cursor = get_dict_cursor(connection)
     cursor.execute("SELECT balance FROM customers WHERE account_number = %s", (account_number,))
     result = cursor.fetchone()
     return result['balance'] if result else None
@@ -64,8 +61,8 @@ def record_transaction(cursor, account_number, txn_type, amount, balance_after, 
     cursor.execute(query, (account_number, txn_type, amount, balance_after, related_account, description))
 
 
-# ───────────────────���──────────────────────
-#  Authentication Routes
+# ──────────────────────────────────────────
+# Authentication Routes
 # ──────────────────────────────────────────
 
 @app.route('/')
@@ -85,7 +82,7 @@ def login():
 
         conn = get_db_connection()
         if conn:
-            cursor = conn.cursor(dictionary=True)
+            cursor = get_dict_cursor(conn)
             cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s",
                            (username, password))
             user = cursor.fetchone()
@@ -129,7 +126,7 @@ def register():
         conn = get_db_connection()
         if conn:
             try:
-                cursor = conn.cursor()
+                cursor = conn.cursor()  # No dict needed here
                 cursor.execute("""INSERT INTO customers
                                   (name, email, phone, address, dob, account_type, balance)
                                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
@@ -146,7 +143,6 @@ def register():
                 conn.commit()
                 flash(f'Account created! Your Account Number is {account_number}. Please login.', 'success')
                 return redirect(url_for('login'))
-
             except Exception as e:
                 conn.rollback()
                 flash(f'Registration failed: {str(e)}', 'danger')
@@ -164,7 +160,7 @@ def logout():
 
 
 # ──────────────────────────────────────────
-#  Customer Dashboard
+# Customer Dashboard
 # ──────────────────────────────────────────
 
 @app.route('/dashboard')
@@ -172,16 +168,17 @@ def logout():
 def dashboard():
     conn = get_db_connection()
     if conn:
-        cursor = conn.cursor(dictionary=True)
+        cursor = get_dict_cursor(conn)
         cursor.execute("SELECT * FROM customers WHERE account_number = %s",
-                        (session['account_number'],))
+                       (session['account_number'],))
         account = cursor.fetchone()
 
         cursor.execute("""SELECT * FROM transactions
                           WHERE account_number = %s
                           ORDER BY transaction_date DESC LIMIT 5""",
-                        (session['account_number'],))
+                       (session['account_number'],))
         recent_txns = cursor.fetchall()
+
         conn.close()
         return render_template('dashboard.html', account=account, transactions=recent_txns)
 
@@ -190,8 +187,8 @@ def dashboard():
 
 
 # ──────────────────────────────────────────
-#  Deposit
-# ───────────────────��──────────────────────
+# Deposit
+# ──────────────────────────────────────────
 
 @app.route('/deposit', methods=['GET', 'POST'])
 @login_required
@@ -209,17 +206,14 @@ def deposit():
             try:
                 cursor = conn.cursor()
                 acc_no = session['account_number']
-
                 cursor.execute("UPDATE customers SET balance = balance + %s WHERE account_number = %s",
                                (amount, acc_no))
                 new_balance = get_account_balance(conn, acc_no)
                 record_transaction(cursor, acc_no, 'Deposit', amount,
                                    new_balance, None, description)
-
                 conn.commit()
                 flash(f'₹{amount:,.2f} deposited successfully! New balance: ₹{new_balance:,.2f}', 'success')
                 return redirect(url_for('dashboard'))
-
             except Exception as e:
                 conn.rollback()
                 flash(f'Deposit failed: {str(e)}', 'danger')
@@ -230,7 +224,7 @@ def deposit():
 
 
 # ──────────────────────────────────────────
-#  Withdrawal
+# Withdrawal
 # ──────────────────────────────────────────
 
 @app.route('/withdraw', methods=['GET', 'POST'])
@@ -258,17 +252,14 @@ def withdraw():
             try:
                 cursor = conn.cursor()
                 acc_no = session['account_number']
-
                 cursor.execute("UPDATE customers SET balance = balance - %s WHERE account_number = %s",
                                (amount, acc_no))
                 new_balance = get_account_balance(conn, acc_no)
                 record_transaction(cursor, acc_no, 'Withdrawal', amount,
                                    new_balance, None, description)
-
                 conn.commit()
                 flash(f'₹{amount:,.2f} withdrawn successfully! Remaining balance: ₹{new_balance:,.2f}', 'success')
                 return redirect(url_for('dashboard'))
-
             except Exception as e:
                 conn.rollback()
                 flash(f'Withdrawal failed: {str(e)}', 'danger')
@@ -279,18 +270,12 @@ def withdraw():
 
 
 # ──────────────────────────────────────────
-#  Fund Transfer (Withdrawal + Deposit)
+# Fund Transfer
 # ──────────────────────────────────────────
 
 @app.route('/transfer', methods=['GET', 'POST'])
 @login_required
 def transfer():
-    """
-    Fund Transfer Logic:
-    1. WITHDRAW from sender's account
-    2. DEPOSIT into receiver's account
-    Both recorded as linked transactions.
-    """
     conn = get_db_connection()
     current_balance = get_account_balance(conn, session['account_number']) if conn else 0
     if conn:
@@ -300,9 +285,9 @@ def transfer():
         target_account = int(request.form['target_account'])
         amount = float(request.form['amount'])
         description = request.form.get('description', '')
+
         sender_acc = session['account_number']
 
-        # Validations
         if target_account == sender_acc:
             flash('You cannot transfer to your own account.', 'danger')
             return render_template('transfer.html', balance=current_balance)
@@ -318,7 +303,7 @@ def transfer():
         conn = get_db_connection()
         if conn:
             try:
-                cursor = conn.cursor(dictionary=True)
+                cursor = get_dict_cursor(conn)
 
                 # Verify recipient exists
                 cursor.execute("SELECT account_number, name FROM customers WHERE account_number = %s",
@@ -330,7 +315,7 @@ def transfer():
                     conn.close()
                     return render_template('transfer.html', balance=current_balance)
 
-                # ── STEP 1: WITHDRAW from sender ──
+                # STEP 1: WITHDRAW from sender
                 cursor.execute("UPDATE customers SET balance = balance - %s WHERE account_number = %s",
                                (amount, sender_acc))
                 sender_new_balance = get_account_balance(conn, sender_acc)
@@ -342,7 +327,7 @@ def transfer():
                 record_transaction(cursor, sender_acc, 'Transfer Sent', amount,
                                    sender_new_balance, target_account, sender_desc)
 
-                # ── STEP 2: DEPOSIT into receiver ──
+                # STEP 2: DEPOSIT into receiver
                 cursor.execute("UPDATE customers SET balance = balance + %s WHERE account_number = %s",
                                (amount, target_account))
                 receiver_new_balance = get_account_balance(conn, target_account)
@@ -372,7 +357,7 @@ def transfer():
 
 
 # ──────────────────────────────────────────
-#  Transaction History
+# Transaction History
 # ──────────────────────────────────────────
 
 @app.route('/transactions')
@@ -380,32 +365,29 @@ def transfer():
 def transactions():
     conn = get_db_connection()
     if conn:
-        cursor = conn.cursor(dictionary=True)
+        cursor = get_dict_cursor(conn)
         cursor.execute("""SELECT * FROM transactions
                           WHERE account_number = %s
                           ORDER BY transaction_date DESC""",
-                        (session['account_number'],))
+                       (session['account_number'],))
         all_txns = cursor.fetchall()
         conn.close()
         return render_template('transactions.html', transactions=all_txns)
-
     flash('Database connection error.', 'danger')
     return redirect(url_for('dashboard'))
 
 
 # ──────────────────────────────────────────
-#  Profile
+# Profile
 # ──────────────────────────────────────────
 
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
     conn = get_db_connection()
-
     if request.method == 'POST':
         phone = request.form['phone']
         address = request.form['address']
-
         if conn:
             try:
                 cursor = conn.cursor()
@@ -418,9 +400,9 @@ def profile():
                 flash(f'Update failed: {str(e)}', 'danger')
 
     if conn:
-        cursor = conn.cursor(dictionary=True)
+        cursor = get_dict_cursor(conn)
         cursor.execute("SELECT * FROM customers WHERE account_number = %s",
-                        (session['account_number'],))
+                       (session['account_number'],))
         account = cursor.fetchone()
         conn.close()
         return render_template('profile.html', account=account)
@@ -430,7 +412,7 @@ def profile():
 
 
 # ──────────────────────────────────────────
-#  Admin Routes
+# Admin Routes
 # ──────────────────────────────────────────
 
 @app.route('/admin')
@@ -438,7 +420,7 @@ def profile():
 def admin_dashboard():
     conn = get_db_connection()
     if conn:
-        cursor = conn.cursor(dictionary=True)
+        cursor = get_dict_cursor(conn)
 
         cursor.execute("SELECT COUNT(*) as total FROM customers")
         total_accounts = cursor.fetchone()['total']
@@ -446,7 +428,12 @@ def admin_dashboard():
         cursor.execute("SELECT COALESCE(SUM(balance), 0) as total FROM customers")
         total_balance = cursor.fetchone()['total']
 
-        cursor.execute("SELECT COUNT(*) as total FROM transactions WHERE DATE(transaction_date) = CURDATE()")
+        # PostgreSQL version of today's transactions count
+        cursor.execute("""
+            SELECT COUNT(*) as total 
+            FROM transactions 
+            WHERE transaction_date::date = CURRENT_DATE
+        """)
         today_txns = cursor.fetchone()['total']
 
         cursor.execute("""SELECT t.*, c.name FROM transactions t
@@ -470,7 +457,7 @@ def admin_dashboard():
 def admin_accounts():
     conn = get_db_connection()
     if conn:
-        cursor = conn.cursor(dictionary=True)
+        cursor = get_dict_cursor(conn)
         cursor.execute("SELECT * FROM customers ORDER BY account_number")
         accounts = cursor.fetchall()
         conn.close()
@@ -485,7 +472,7 @@ def admin_accounts():
 def admin_account_transactions(acc_no):
     conn = get_db_connection()
     if conn:
-        cursor = conn.cursor(dictionary=True)
+        cursor = get_dict_cursor(conn)
 
         cursor.execute("SELECT * FROM customers WHERE account_number = %s", (acc_no,))
         account = cursor.fetchone()
@@ -502,7 +489,7 @@ def admin_account_transactions(acc_no):
 
 
 # ──────────────────────────────────────────
-#  Run Application
+# Run Application
 # ──────────────────────────────────────────
 
 if __name__ == '__main__':
