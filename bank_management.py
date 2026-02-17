@@ -4,21 +4,23 @@ from psycopg2.extras import DictCursor
 from datetime import date
 import hashlib
 import sys
-
+import os
 # ──────────────────────────────────────────
 # Database Helpers (you can move these to db_connection.py later)
 # ──────────────────────────────────────────
 
 def create_connection():
-    """Create PostgreSQL connection using environment variables or defaults."""
+    """Create PostgreSQL connection using environment variables (Render-friendly)"""
     try:
         conn = psycopg2.connect(
-            host="localhost",          # change or use os.environ.get('PGHOST')
-            database="bankdb",         # change or use os.environ.get('PGDATABASE')
-            user="postgres",           # change or use os.environ.get('PGUSER')
-            password="your_password",  # change or use os.environ.get('PGPASSWORD')
-            port=5432
+            host=os.environ.get('PGHOST', 'localhost'),
+            port=int(os.environ.get('PGPORT', '5432')),
+            database=os.environ.get('PGDATABASE', 'bankdb'),
+            user=os.environ.get('PGUSER', 'postgres'),
+            password=os.environ.get('PGPASSWORD', '')
         )
+        conn.autocommit = False   # Important: we want manual commit/rollback
+        print("✅ Successfully connected to PostgreSQL database")
         return conn
     except Error as e:
         print(f"❌ Failed to connect to PostgreSQL: {e}")
