@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - SecureBank{% endblock %}
+{% block content %}
+<div class="dashboard">
+    <h1 class="page-title"><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+    <p class="welcome-msg">Welcome, <strong>{{ account.name }}</strong>!</p>
+
+    <!-- Account Summary Cards -->
+    <div class="card-grid">
+        <div class="summary-card balance-card">
+            <div class="card-icon"><i class="fas fa-wallet"></i></div>
+            <div class="card-info">
+                <span class="card-label">Available Balance</span>
+                <span class="card-value">₹{{ "{:,.2f}".format(account.balance) }}</span>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="card-icon"><i class="fas fa-hashtag"></i></div>
+            <div class="card-info">
+                <span class="card-label">Account Number</span>
+                <span class="card-value">{{ account.account_number }}</span>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="card-icon"><i class="fas fa-credit-card"></i></div>
+            <div class="card-info">
+                <span class="card-label">Account Type</span>
+                <span class="card-value">{{ account.account_type }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+        <div class="action-grid">
+            <a href="{{ url_for('deposit') }}" class="action-btn deposit-btn">
+                <i class="fas fa-plus-circle"></i>
+                <span>Deposit</span>
+            </a>
+            <a href="{{ url_for('withdraw') }}" class="action-btn withdraw-btn">
+                <i class="fas fa-minus-circle"></i>
+                <span>Withdraw</span>
+            </a>
+            <a href="{{ url_for('transfer') }}" class="action-btn transfer-btn">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Transfer</span>
+            </a>
+            <a href="{{ url_for('transactions') }}" class="action-btn history-btn">
+                <i class="fas fa-history"></i>
+                <span>History</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="recent-txns">
+        <h2><i class="fas fa-clock"></i> Recent Transactions</h2>
+        {% if transactions %}
+        <table class="txn-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Balance</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for txn in transactions %}
+                <tr>
+                    <td>{{ txn.transaction_date.strftime('%d %b %Y, %I:%M %p') }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'success' if txn.transaction_type in ['Deposit', 'Transfer Received'] else 'danger' }}">
+                            {{ txn.transaction_type }}
+                        </span>
+                    </td>
+                    <td class="{{ 'text-success' if txn.transaction_type in ['Deposit', 'Transfer Received'] else 'text-danger' }}">
+                        {{ '+' if txn.transaction_type in ['Deposit', 'Transfer Received'] else '-' }}₹{{ "{:,.2f}".format(txn.amount) }}
+                    </td>
+                    <td>₹{{ "{:,.2f}".format(txn.balance_after) }}</td>
+                    <td>{{ txn.description }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="no-data">No recent transactions.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

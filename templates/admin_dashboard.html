@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard - SecureBank{% endblock %}
+{% block content %}
+<div class="dashboard">
+    <h1 class="page-title"><i class="fas fa-shield-alt"></i> Admin Dashboard</h1>
+
+    <div class="card-grid">
+        <div class="summary-card">
+            <div class="card-icon"><i class="fas fa-users"></i></div>
+            <div class="card-info">
+                <span class="card-label">Total Accounts</span>
+                <span class="card-value">{{ total_accounts }}</span>
+            </div>
+        </div>
+        <div class="summary-card balance-card">
+            <div class="card-icon"><i class="fas fa-piggy-bank"></i></div>
+            <div class="card-info">
+                <span class="card-label">Total Bank Deposits</span>
+                <span class="card-value">₹{{ "{:,.2f}".format(total_balance) }}</span>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="card-icon"><i class="fas fa-chart-line"></i></div>
+            <div class="card-info">
+                <span class="card-label">Today's Transactions</span>
+                <span class="card-value">{{ today_txns }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="recent-txns">
+        <h2><i class="fas fa-clock"></i> Recent Bank Transactions</h2>
+        {% if recent_txns %}
+        <table class="txn-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>A/C No.</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for txn in recent_txns %}
+                <tr>
+                    <td>{{ txn.transaction_date.strftime('%d %b %Y, %I:%M %p') }}</td>
+                    <td>{{ txn.name }}</td>
+                    <td>{{ txn.account_number }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'success' if txn.transaction_type in ['Deposit', 'Transfer Received'] else 'danger' }}">
+                            {{ txn.transaction_type }}
+                        </span>
+                    </td>
+                    <td>₹{{ "{:,.2f}".format(txn.amount) }}</td>
+                    <td>{{ txn.description }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="no-data">No transactions yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

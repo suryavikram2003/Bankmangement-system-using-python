@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}All Accounts - SecureBank{% endblock %}
+{% block content %}
+<div class="dashboard">
+    <h1 class="page-title"><i class="fas fa-users"></i> All Customer Accounts</h1>
+
+    {% if accounts %}
+    <table class="txn-table full-table">
+        <thead>
+            <tr>
+                <th>A/C No.</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Type</th>
+                <th>Balance</th>
+                <th>Opened On</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for acc in accounts %}
+            <tr>
+                <td>{{ acc.account_number }}</td>
+                <td>{{ acc.name }}</td>
+                <td>{{ acc.email }}</td>
+                <td>{{ acc.phone }}</td>
+                <td>{{ acc.account_type }}</td>
+                <td>₹{{ "{:,.2f}".format(acc.balance) }}</td>
+                <td>{{ acc.created_at.strftime('%d %b %Y') }}</td>
+                <td>
+                    <a href="{{ url_for('admin_account_transactions', acc_no=acc.account_number) }}" 
+                       class="btn btn-sm btn-primary">
+                        <i class="fas fa-eye"></i> Transactions
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="no-data">No accounts found.</p>
+    {% endif %}
+</div>
+{% endblock %}

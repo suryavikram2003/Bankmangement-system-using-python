@@ -1,0 +1,9 @@
+Collecting gunicorn
+  Downloading gunicorn-25.0.3-py3-none-any.whl.metadata (5.5 kB)
+Collecting packaging (from gunicorn)
+  Downloading packaging-26.0-py3-none-any.whl.metadata (3.3 kB)
+Downloading gunicorn-25.0.3-py3-none-any.whl (171 kB)
+Downloading packaging-26.0-py3-none-any.whl (74 kB)
+Installing collected packages: packaging, gunicorn
+
+Successfully installed gunicorn-25.0.3 packaging-26.0

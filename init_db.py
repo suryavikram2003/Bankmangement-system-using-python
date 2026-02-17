@@ -1,0 +1,87 @@
+"""
+Database initialization script.
+Creates all tables and default admin user on first run.
+Run automatically when the app starts.
+"""
+
+from db_connection import get_db_connection
+import hashlib
+
+
+def init_database():
+    """Create all required tables if they don't exist."""
+    conn = get_db_connection()
+    if not conn:
+        print("❌ Cannot initialize database — connection failed.")
+        return False
+
+    cursor = conn.cursor()
+
+    try:
+        # ── Create customers table ──
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS customers (
+                account_number INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                phone VARCHAR(15),
+                address VARCHAR(255),
+                dob DATE,
+                account_type ENUM('Savings', 'Current') DEFAULT 'Savings',
+                balance DECIMAL(15, 2) DEFAULT 0.00,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # ── Create transactions table ──
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS transactions (
+                transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+                account_number INT NOT NULL,
+                transaction_type ENUM('Deposit', 'Withdrawal', 'Transfer Sent', 'Transfer Received') NOT NULL,
+                amount DECIMAL(15, 2) NOT NULL,
+                balance_after DECIMAL(15, 2) NOT NULL,
+                related_account INT DEFAULT NULL,
+                description VARCHAR(255),
+                transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (account_number) REFERENCES customers(account_number) ON DELETE CASCADE
+            )
+        """)
+
+        # ── Create users table ──
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                role ENUM('Admin', 'Customer') DEFAULT 'Customer',
+                account_number INT,
+                FOREIGN KEY (account_number) REFERENCES customers(account_number) ON DELETE CASCADE
+            )
+        """)
+
+        # ── Create default admin user ──
+        admin_password = hashlib.sha256('admin123'.encode()).hexdigest()
+        cursor.execute("SELECT * FROM users WHERE username = 'admin'")
+        if not cursor.fetchone():
+            cursor.execute(
+                "INSERT INTO users (username, password, role, account_number) VALUES (%s, %s, 'Admin', NULL)",
+                ('admin', admin_password)
+            )
+            print("✅ Default admin created (username: admin, password: admin123)")
+
+        conn.commit()
+        print("✅ Database tables initialized successfully!")
+        return True
+
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ Database initialization error: {e}")
+        return False
+
+    finally:
+        conn.close()
+
+
+if __name__ == '__main__':
+    init_database()

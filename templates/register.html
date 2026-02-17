@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}Register - SecureBank{% endblock %}
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card register-card">
+        <div class="auth-header">
+            <i class="fas fa-user-plus auth-icon"></i>
+            <h1>Open New Account</h1>
+            <p>Fill in the details below to create your bank account.</p>
+        </div>
+        <form method="POST" action="{{ url_for('register') }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Full Name</label>
+                    <input type="text" name="name" required placeholder="John Doe">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-envelope"></i> Email</label>
+                    <input type="email" name="email" required placeholder="john@example.com">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label><i class="fas fa-phone"></i> Phone</label>
+                    <input type="text" name="phone" required placeholder="9876543210">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-calendar"></i> Date of Birth</label>
+                    <input type="date" name="dob" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-map-marker-alt"></i> Address</label>
+                <input type="text" name="address" required placeholder="Your full address">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label><i class="fas fa-credit-card"></i> Account Type</label>
+                    <select name="account_type" required>
+                        <option value="Savings">Savings Account</option>
+                        <option value="Current">Current Account</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-money-bill"></i> Initial Deposit (Min ₹500)</label>
+                    <input type="number" name="initial_deposit" min="500" step="0.01" required placeholder="500.00">
+                </div>
+            </div>
+            <hr class="divider">
+            <h3><i class="fas fa-key"></i> Login Credentials</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" required placeholder="Choose a username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" required placeholder="Choose a password">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">
+                <i class="fas fa-check-circle"></i> Create Account
+            </button>
+        </form>
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

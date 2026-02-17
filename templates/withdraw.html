@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Withdraw - SecureBank{% endblock %}
+{% block content %}
+<div class="form-page">
+    <div class="form-card">
+        <h1><i class="fas fa-minus-circle text-danger"></i> Withdraw Money</h1>
+        <p class="form-subtitle">Available Balance: <strong>₹{{ "{:,.2f}".format(balance) }}</strong></p>
+
+        <form method="POST" action="{{ url_for('withdraw') }}">
+            <div class="form-group">
+                <label><i class="fas fa-money-bill-wave"></i> Amount (₹)</label>
+                <input type="number" name="amount" min="1" max="{{ balance }}" step="0.01" 
+                       required placeholder="Enter withdrawal amount" class="input-large">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-comment"></i> Description (Optional)</label>
+                <input type="text" name="description" placeholder="e.g., ATM withdrawal, Bill payment">
+            </div>
+            <button type="submit" class="btn btn-danger btn-full">
+                <i class="fas fa-check"></i> Withdraw Now
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

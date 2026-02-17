@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Transaction History - SecureBank{% endblock %}
+{% block content %}
+<div class="dashboard">
+    <h1 class="page-title"><i class="fas fa-history"></i> Transaction History</h1>
+    {% if admin_view and account %}
+        <p>Showing transactions for <strong>{{ account.name }}</strong> (A/C: {{ account.account_number }})</p>
+    {% endif %}
+
+    {% if transactions %}
+    <table class="txn-table full-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Date & Time</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Balance After</th>
+                <th>Related A/C</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for txn in transactions %}
+            <tr>
+                <td>#{{ txn.transaction_id }}</td>
+                <td>{{ txn.transaction_date.strftime('%d %b %Y, %I:%M %p') }}</td>
+                <td>
+                    <span class="badge badge-{{ 'success' if txn.transaction_type in ['Deposit', 'Transfer Received'] else 'danger' }}">
+                        {{ txn.transaction_type }}
+                    </span>
+                </td>
+                <td class="{{ 'text-success' if txn.transaction_type in ['Deposit', 'Transfer Received'] else 'text-danger' }}">
+                    {{ '+' if txn.transaction_type in ['Deposit', 'Transfer Received'] else '-' }}₹{{ "{:,.2f}".format(txn.amount) }}
+                </td>
+                <td>₹{{ "{:,.2f}".format(txn.balance_after) }}</td>
+                <td>{{ txn.related_account if txn.related_account else '-' }}</td>
+                <td>{{ txn.description }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="no-data">No transactions found.</p>
+    {% endif %}
+</div>
+{% endblock %}
