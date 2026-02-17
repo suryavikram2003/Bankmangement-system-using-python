@@ -1,10 +1,11 @@
+# Modified init_db.py for PostgreSQL
 """
 Database initialization script.
 Creates all tables and default admin user on first run.
 Run automatically when the app starts.
 """
 
-from db_connection import get_db_connection
+from db_connection import get_db_connection, get_dict_cursor
 import hashlib
 
 
@@ -21,14 +22,14 @@ def init_database():
         # ── Create customers table ──
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS customers (
-                account_number INT AUTO_INCREMENT PRIMARY KEY,
+                account_number SERIAL PRIMARY KEY,
                 name VARCHAR(100) NOT NULL,
                 email VARCHAR(100) UNIQUE NOT NULL,
                 phone VARCHAR(15),
                 address VARCHAR(255),
                 dob DATE,
-                account_type ENUM('Savings', 'Current') DEFAULT 'Savings',
-                balance DECIMAL(15, 2) DEFAULT 0.00,
+                account_type TEXT DEFAULT 'Savings' CHECK (account_type IN ('Savings', 'Current')),
+                balance NUMERIC(15, 2) DEFAULT 0.00,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -36,11 +37,11 @@ def init_database():
         # ── Create transactions table ──
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS transactions (
-                transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+                transaction_id SERIAL PRIMARY KEY,
                 account_number INT NOT NULL,
-                transaction_type ENUM('Deposit', 'Withdrawal', 'Transfer Sent', 'Transfer Received') NOT NULL,
-                amount DECIMAL(15, 2) NOT NULL,
-                balance_after DECIMAL(15, 2) NOT NULL,
+                transaction_type TEXT NOT NULL CHECK (transaction_type IN ('Deposit', 'Withdrawal', 'Transfer Sent', 'Transfer Received')),
+                amount NUMERIC(15, 2) NOT NULL,
+                balance_after NUMERIC(15, 2) NOT NULL,
                 related_account INT DEFAULT NULL,
                 description VARCHAR(255),
                 transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -51,10 +52,10 @@ def init_database():
         # ── Create users table ──
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
-                user_id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id SERIAL PRIMARY KEY,
                 username VARCHAR(50) UNIQUE NOT NULL,
                 password VARCHAR(255) NOT NULL,
-                role ENUM('Admin', 'Customer') DEFAULT 'Customer',
+                role TEXT DEFAULT 'Customer' CHECK (role IN ('Admin', 'Customer')),
                 account_number INT,
                 FOREIGN KEY (account_number) REFERENCES customers(account_number) ON DELETE CASCADE
             )
@@ -62,8 +63,9 @@ def init_database():
 
         # ── Create default admin user ──
         admin_password = hashlib.sha256('admin123'.encode()).hexdigest()
-        cursor.execute("SELECT * FROM users WHERE username = 'admin'")
-        if not cursor.fetchone():
+        dict_cursor = get_dict_cursor(conn)
+        dict_cursor.execute("SELECT * FROM users WHERE username = 'admin'")
+        if not dict_cursor.fetchone():
             cursor.execute(
                 "INSERT INTO users (username, password, role, account_number) VALUES (%s, %s, 'Admin', NULL)",
                 ('admin', admin_password)
