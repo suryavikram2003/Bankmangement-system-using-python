@@ -125,19 +125,23 @@ def register():
 
         conn = get_db_connection()
         if conn:
+            # In register route – replace this block:
             try:
-                cursor = conn.cursor()  # No dict needed here
-                cursor.execute("""INSERT INTO customers
-                                  (name, email, phone, address, dob, account_type, balance)
-                                  VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-                               (name, email, phone, address, dob, account_type, initial_deposit))
-                account_number = cursor.lastrowid
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO customers
+                    (name, email, phone, address, dob, account_type, balance)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING account_number
+                    """, (name, email, phone, address, dob, account_type, initial_deposit))
+                account_number = cursor.fetchone()[0]           # ← this gets the real new ID
 
+    # Now record transaction with correct account_number
                 record_transaction(cursor, account_number, 'Deposit', initial_deposit,
                                    initial_deposit, None, 'Initial deposit at account opening')
 
                 cursor.execute("""INSERT INTO users (username, password, role, account_number)
-                                  VALUES (%s, %s, 'Customer', %s)""",
+                    VALUES (%s, %s, 'Customer', %s)""",
                                (username, password, account_number))
 
                 conn.commit()
